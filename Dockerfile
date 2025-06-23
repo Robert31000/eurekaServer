@@ -1,24 +1,14 @@
-# Etapa 1: construir con Maven
-FROM maven:3.9.0-eclipse-temurin-17 AS build
+# 1) Etapa de build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
+COPY pom.xml mvnw .mvn/ ./
+COPY src/ src/
+RUN ./mvnw clean package -DskipTests
 
-# Sólo copia pom y descarga dependencias
-COPY pom.xml .
-RUN mvn dependency:go-offline
-
-# Copia el resto del código y compila el jar
-COPY src ./src
-RUN mvn clean package -DskipTests
-
-# Etapa 2: runtime mínimo
-FROM eclipse-temurin:17-jdk
-WORKDIR /
-
-# Copia el jar compilado
-COPY --from=build /app/target/*.jar app.jar
-
-# Expone el puerto de Eureka
+# 2) Etapa de runtime
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+ARG JAR=project-microservices-0.0.1-SNAPSHOT.jar
+COPY --from=build /app/target/${JAR} app.jar
 EXPOSE 8761
-
-# Arranca la aplicación
 ENTRYPOINT ["java","-jar","/app.jar"]
